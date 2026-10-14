@@ -1,0 +1,14 @@
+# Eğitim çıktıları (config'ten yeniden üretilebilir, büyük)
+runs/
+runs_test/
+tensorboard/
+*.zip
+*.pkl
+
+# Python / Jupyter
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+
+# Kişisel
+Kişisel notlar.md
