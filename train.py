@@ -31,7 +31,7 @@ def main():
 
 
     if a.algo == "ppo":
-        env = VecNormalize(env, norm_obs=TODO, norm_reward=TODO, gamma=0.99)
+        env = VecNormalize(env, norm_obs=True, norm_reward=True, gamma=0.99)
 
     # SB3 defaults
     model = ALGOS[a.algo]("MlpPolicy", env, gamma=0.99, seed=a.seed,
