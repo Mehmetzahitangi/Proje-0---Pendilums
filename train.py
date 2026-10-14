@@ -1,4 +1,6 @@
-import argparse, json, os, time
+import argparse, json, os, subprocess, time
+
+import torch
 
 from stable_baselines3 import PPO, SAC
 from stable_baselines3.common.env_util import make_vec_env
@@ -20,7 +22,23 @@ def arguments():
     return p.parse_args()
 
 
+def git_surumu():
+    """Kod sürümü: commit hash'i + commit'lenmemiş değişiklik var mı."""
+    try:
+        h = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], text=True).strip()
+        kirli = bool(subprocess.check_output(["git", "status", "--porcelain"], text=True).strip())
+        return h + ("-dirty" if kirli else "")
+    except Exception:
+        return "git-yok"
+
+
+def config_yaz(config, run_dir):
+    with open(os.path.join(run_dir, "config.json"), "w") as f:
+        json.dump(config, f, indent=2)
+
+
 def main():
+    torch.set_num_threads(1)   # küçük ağ: ek thread hız kazandırmıyor; paralel koşularda çekirdek yarışmasını önler
     a = arguments()
     adim = a.steps or DEFAULT_STEPS[a.algo]
     run_dir = os.path.join(a.out, f"{a.algo}_seed{a.seed}")
@@ -39,10 +57,9 @@ def main():
 
     # Config 
     config = dict(algo=a.algo, seed=a.seed, steps=adim, distribution=a.distribution, gamma=0.99,
-                  envs_py=("envs.py"), cartpole_py=("cartpole.py"),
+                  git=git_surumu(),
                   baslangic=time.strftime("%Y-%m-%d %H:%M:%S"))
-    
-    json.dump(config, open(os.path.join(run_dir, "config.json"), "w"), indent=2)
+    config_yaz(config, run_dir)            # eğitimden ÖNCE: koşu çökse de ne koştuğu bilinsin
 
     # 5) Eğit ve süreyi ölç
     t0 = time.time()
@@ -54,7 +71,8 @@ def main():
     if a.algo == "ppo":
         env.save(os.path.join(run_dir, "vecnormalize.pkl"))
     config["wall_time"] = ttime
-    json.dump(config, open(os.path.join(run_dir, "config.json"), "w"), indent=2)
+    config["gercek_adim"] = int(model.num_timesteps)   # PPO bütçeyi n_steps katına yuvarlar
+    config_yaz(config, run_dir)
     print(f"bitti: {run_dir}  ({ttime/60:.1f} dk)")
 
 
