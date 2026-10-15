@@ -130,3 +130,24 @@ LQR R×10    | F_max=None  | ilk başarısız açı: 57°
 | Loglama | TensorBoard; her koşu `runs/<algo>_seed<k>/` | tekrarlanabilirlik |
 
 **Tahmin (koşudan önce):** LQR seviyesine (zor blokta ~42/50) **daha az ortam adımıyla** da, **daha kısa duvar saatinde** de **SAC** ulaşır.
+
+## 2026-10-15 — Aşama 9: bütçe revizyonu ve periyodik sınav
+
+Duman testi (tek tohum, seed 0): SAC 10k adımda 40/50, 20k'da 44/50; PPO 25k'da 38/50, 50k'da 45/50.
+İkisi de LQR seviyesine (42/50) ilk tur bütçesinin çok altında ulaştı. Bu yüzden:
+
+| karar | seçim | gerekçe |
+|---|---|---|
+| Eğitim bütçesi (revize) | **PPO 300k, SAC 100k** adım (önceki: 1M / 300k) | öğrenme 20–50k adımda oluyor; ~6 kat pay bırakıyor; yol haritası aralığının alt ucu |
+| Periyodik sınav | zor geliştirme bloğu (50 senaryo, seed = 0), deterministik politika, Aşama 6 ölçütleri; 0. adımda da | `ep_rew_mean` stokastik aksiyon + rastgele s₀ + ödül (ölçüt değil) → LQR ile kıyaslanamaz |
+| Sınav aralığı | **PPO 5k, SAC 2k** adım (60 / 50 sınav) | "LQR seviyesine kaç adımda?" sorusunu 2–5k çözünürlükle ölçmek; bir sınav ≈ 5.7 s |
+| Duvar saati | sınav süresi düşülmüş eğitim süresi (`duvar_egitim_s`) | tahmindeki "duvar saati" kısmını sınav maliyeti çarpıtmasın |
+| Kaydedilen modeller | son model + geliştirme bloğunda en iyi model (`model_en_iyi`, PPO'da `vecnormalize_en_iyi.pkl`) | en iyi model geliştirme bloğuna göre seçildiği için iyimser; yansız sayı nihai blokta |
+| Paralellik | her koşu ayrı süreç, `torch.set_num_threads(1)` | küçük ağda ek thread hız kazandırmıyor (ölçüldü); 10 süreç çekirdek için yarışmasın |
+| Kod sürümü | config'te `git` (commit hash, değişiklik varsa `-dirty`) | asıl koşular temiz commit'ten başlatılacak |
+
+**Gözlem (duman testi):** RL politikaları çubuğu dengeliyor ama arabayı merkezin 5–7 cm yanına park ediyor
+(son |x| medyanı SAC 0.074 m, PPO 0.047 m; LQR 0.000 m), yön tutarlı (SAC solda, PPO sağda). Bu yüzden oturma
+süresi (bant 0.02 m) hep 10 s çıkıyor. Sebep: ağın π(x,0,0,0) = 0 noktası x = 0'da değil (kalıcı hal hatası) ve
+ödül bunu çok az cezalandırıyor (x = 0.07 → ödül 0.98). Ders 9.4/9.5'te "son |x|" ölçütü eklenip uzun eğitimin
+bunu kapatıp kapatmadığı incelenecek.
