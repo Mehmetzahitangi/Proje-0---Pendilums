@@ -269,3 +269,20 @@ class LQGController:
         u = np.clip(u, -self.F_max, self.F_max)
         self.u_onceki = u
         return float(u)
+
+
+class RLPolitika:
+    """SB3 politikasını Aşama 6 düzeneğine uyduran sarmalayıcı: act(s) → F [N].
+    vecnorm: PPO'nun VecNormalize nesnesi (SAC'ta None)."""
+    def __init__(self, model, vecnorm=None, F_max=10.0):
+        self.model, self.vecnorm, self.F_max = model, vecnorm, F_max
+
+    def reset(self):
+        pass                                     # LQR gibi: iç durumu yok (ağ hafızasız)
+
+    def act(self, s):
+        obs = np.asarray(s, dtype=np.float32)
+        if self.vecnorm is not None:
+            obs = self.vecnorm.normalize_obs(obs)        # eğitimdeki μ, σ ile normalize et — istatistikleri GÜNCELLEMEDEN
+        a, _ = self.model.predict(obs, deterministic=True)  # SB3: a ∈ [−1, 1]
+        return float(a[0]) * self.F_max   # a ∈ [−1, 1] → Newton  (ortam da tam böyle çeviriyor: envs.py step)
