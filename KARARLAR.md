@@ -151,3 +151,27 @@ Duman testi (tek tohum, seed 0): SAC 10k adımda 40/50, 20k'da 44/50; PPO 25k'da
 süresi (bant 0.02 m) hep 10 s çıkıyor. Sebep: ağın π(x,0,0,0) = 0 noktası x = 0'da değil (kalıcı hal hatası) ve
 ödül bunu çok az cezalandırıyor (x = 0.07 → ödül 0.98). Ders 9.4/9.5'te "son |x|" ölçütü eklenip uzun eğitimin
 bunu kapatıp kapatmadığı incelenecek.
+
+## 2026-10-15 — Aşama 9 (Ders 9.4): değerlendirme sonuçları ve model seçimi
+
+**Zor geliştirme bloğu, 5 tohumun medyanı [min, maks]** (nominal blokta bütün modeller 50/50):
+
+| | başarı | son \|x\| (başarılı bölümler) | efor medyanı |
+|---|---|---|---|
+| LQR Bryson | 42 | 0.00 cm | 19.0 |
+| LQR R×10 / Kaskad PID | 45 / 45 | 0.00 cm | 14.1 / 38.6 |
+| MPC N=10 | 43 | 0.00 cm | 19.0 |
+| PPO en_iyi | 45 [45, 45] | 8.4 cm [0.6, 16.1] | 13.2 |
+| PPO son | 45 [42, 45] | 0.9 cm [0.3, 9.6] | 15.8 |
+| SAC en_iyi | 45 [45, 45] | 1.1 cm [0.6, 9.1] | 16.6 |
+| SAC son | 45 [43, 45] | 0.7 cm [0.2, 1.9] | 19.8 |
+
+- RL, LQR Bryson'ın kaybettiği 3 senaryoyu (13, 26, 47) 5/5 tohumla kurtarıyor; LQR'nin başarıp RL'nin kaybettiği senaryo yok. Kalan 5 (gösterge |θ + θ̇/λ| > 0.6) kimse için kurtarılamaz → 45 blok tavanı.
+- Efor: PPO < SAC ≈ LQR Bryson.
+- Tahmin kontrolü: adımda SAC önde (medyan 16k / 25k), duvar saatinde PPO ~10× önde (24 s / 234 s).
+
+| karar | seçim | gerekçe |
+|---|---|---|
+| Kullanılacak model | **son model** (`model.zip`, PPO'da `vecnormalize.pkl`) — Aşama 12 ve nihai blok dahil | `en_iyi` = başarının 45'e İLK ulaştığı an (`k > en_iyi`, tavan doygun) → ortalamayı henüz öğrenmemiş erken model (PPO son \|x\| 8.4 cm, son modelde 0.9 cm). Son modelde seçim yanlılığı da yok |
+| `en_iyi` modeller | silinmez, raporda karşılaştırma olarak kalır | "tavanda doyan ölçütle model seçimi" dersinin kanıtı |
+| Yeni ölçüt | `son_x` (bölüm sonu \|x\|), özet: başarılı bölümlerde medyan | başarı tanımı x → 0 istemiyor; RL'nin kalıcı hal hatası ancak böyle görünüyor |

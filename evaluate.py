@@ -38,7 +38,8 @@ def olcutler(t, S, U, tol=0.02):
                 oturma=oturma,
                 efor=float(np.sum(U**2) * DT),
                 th_rms=float(np.sqrt(np.mean(S[:, 2]**2))) if sonlu else np.nan,
-                max_x=float(np.nanmax(np.abs(S[:, 0]))))
+                max_x=float(np.nanmax(np.abs(S[:, 0]))),
+                son_x=float(abs(S[-1, 0])))
 
 
 def wilson(k, n, z=1.96):
@@ -72,15 +73,17 @@ def ozet(satirlar):
         tablo[ad] = dict(n=n, basari=k, oran=k / n, wilson_alt=lo, wilson_ust=hi,
                          oturma_medyan=np.nanmedian([r["oturma"] for r in R]),
                          efor_medyan=np.median([r["efor"] for r in R]),
-                         max_x=np.nanmax([r["max_x"] for r in R]))
+                         max_x=np.nanmax([r["max_x"] for r in R]),
+                         # yalnız başarılı bölümler: "dengeyi kurunca arabayı nereye park ediyor?"
+                         son_x_medyan=np.median([r["son_x"] for r in R if r["basari"]]) if k else np.nan)
     return tablo
 
 
 def ozet_yazdir(tablo):
-    print(f"{'kontrolcü':16s} | {'başarı':>7s} | {'%95 Wilson':>13s} | {'oturma med':>10s} | {'efor med':>8s} | {'max|x|':>6s}")
+    print(f"{'kontrolcü':16s} | {'başarı':>7s} | {'%95 Wilson':>13s} | {'oturma med':>10s} | {'efor med':>8s} | {'max|x|':>6s} | {'son|x| med':>10s}")
     for ad, o in tablo.items():
         print(f"{ad:16s} | {o['basari']:3d}/{o['n']:<3d} | [{o['wilson_alt']:.2f}, {o['wilson_ust']:.2f}] | "
-              f"{o['oturma_medyan']:8.2f} s | {o['efor_medyan']:8.1f} | {o['max_x']:6.2f}")
+              f"{o['oturma_medyan']:8.2f} s | {o['efor_medyan']:8.1f} | {o['max_x']:6.2f} | {o['son_x_medyan']*100:7.2f} cm")
 
 
 def csv_yaz(satirlar, yol):

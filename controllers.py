@@ -286,3 +286,26 @@ class RLPolitika:
             obs = self.vecnorm.normalize_obs(obs)        # eğitimdeki μ, σ ile normalize et — istatistikleri GÜNCELLEMEDEN
         a, _ = self.model.predict(obs, deterministic=True)  # SB3: a ∈ [−1, 1]
         return float(a[0]) * self.F_max   # a ∈ [−1, 1] → Newton  (ortam da tam böyle çeviriyor: envs.py step)
+
+
+
+def rl_yukle(run_dir, hangi="son", F_max=10.0):            # KARARLAR 9.4: son model kullanılır
+    """Eğitilmiş bir koşuyu yükler → her çağrıda RLPolitika üreten fabrika (degerlendir'in istediği biçim).
+    hangi: "en_iyi" (geliştirme bloğunda seçilen) ya da "son" (eğitim sonu)."""
+    import json, os                                            # yerel import: envs → evaluate → controllers döngüsünü önler
+    from stable_baselines3 import PPO, SAC
+    from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
+    from envs import CartPoleContinuousEnv
+
+    with open(os.path.join(run_dir, "config.json")) as f:
+        algo = json.load(f)["algo"]
+    ek = "_en_iyi" if hangi == "en_iyi" else ""
+    model = {"ppo": PPO, "sac": SAC}[algo].load(os.path.join(run_dir, "model" + ek), device="cpu")
+
+    vecnorm = None
+    if algo == "ppo":
+        # model ile AYNI anın istatistikleri: en_iyi model ↔ vecnormalize_en_iyi.pkl
+        vecnorm = VecNormalize.load(os.path.join(run_dir, f"vecnormalize{ek}.pkl"), DummyVecEnv([CartPoleContinuousEnv]))
+        vecnorm.training = False        # değerlendirmede μ, σ güncellenmesin
+        vecnorm.norm_reward = False     # ödül burada kullanılmıyor
+    return lambda: RLPolitika(model, vecnorm, F_max)
